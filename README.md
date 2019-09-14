@@ -1,33 +1,48 @@
 ## xUtils3简介
-* xUtils 包含了orm, http(s), image, view注解, 但依然很轻量级(246K), 并且特性强大, 方便扩展:
-  - `稳定的基石`: `AbsTask`和统一的回调接口`Callback`, 任何异常, 即使你的回调方法实现有异常都会进入`onError`, 任何情况下`onFinished`总会让你知道任务结束了.
-  - 基于高效稳定的`orm`工具, `http`模块得以更方便的实现cookie(支持domain, path, expiry等特性)和
-    缓存(支持Cache-Control, Last-Modified, ETag等特性)的支持.
-  - 有了强大的`http`及其下载缓存的支持, `image`模块的实现相当的简洁, 并且支持回收被view持有, 但被Mem Cache移除的图片, 减少页面回退时的闪烁..
-  - `view`注解模块仅仅400多行代码却灵活的支持了各种View注入和事件绑定, 包括拥有多了方法的listener的支持.
+
+xUtils 包含了orm, http(s), image, view注解, 但依然很轻量级(249K), 并且特性强大, 方便扩展.
+
+#### 1. `orm`: 高效稳定的orm工具, 使得http接口实现时更方便的支持cookie和缓存.
+* 灵活的, 类似linq表达式的接口.
+* 和greenDao一致的性能.
+
+#### 2. `http(s)`: 基于UrlConnection, Android4.4以后底层为okHttp实现.
+* 请求协议支持11种谓词: GET,POST,PUT,PATCH,HEAD,MOVE,COPY,DELETE,OPTIONS,TRACE,CONNECT
+* 支持超大文件(超过2G)上传
+* 支持断点下载
+* 支持cookie(实现了domain, path, expiry等特性)
+* 支持缓存(实现了Cache-Control, Last-Modified, ETag等特性, 缓存内容过多时使用过期时间+LRU双重机制清理)
+
+#### 3. `image`: 有了`http(s)`及其下载缓存的支持, `image`模块的实现相当的简洁.
+* 支持内存缓存, 磁盘缓存(缩略图和原图), 并且支持回收被view持有, 但被MemCache移除的图片, 减少页面回退时的闪烁.
+* 支持在ListView滑动时, 自动停止被回收复用的item对应的下载任务(再次下载时断点续传)
+* 支持webp, gif(部分比较老的系统只展示静态图)
+* 支持圆角, 圆形, 方形等裁剪, 支持自动旋转...
+
+#### 4. `view注解`: view注解模块仅仅400多行代码却灵活的支持了各种View注入和事件绑定.
+* 事件注解支持且不受混淆影响...(参考sample的混淆配置)
+* 支持绑定拥有多个方法的listener
 
 ### 其他特性
-* 支持超大文件(超过2G)上传
-* 更全面的http请求协议支持(11种谓词)
-* 拥有更加灵活的ORM, 和greenDao一致的性能
-* 更多的事件注解支持且不受混淆影响...
-* 图片绑定支持gif(受系统兼容性影响, 部分gif文件只能静态显示), webp; 支持圆角, 圆形, 方形等裁剪, 支持自动旋转...
 * 从3.5.0开始不再包含libwebpbackport.so, 需要在Android4.2以下设备兼容webp的请使用3.4.0版本.
 
 #### 使用Gradle构建时添加一下依赖即可:
 ```javascript
-compile 'org.xutils:xutils:3.5.1'
+compile 'org.xutils:xutils:3.6.16'
 ```
+
+#### 混淆配置参考示例项目sample的配置
 ##### 如果使用eclipse可以 [点击这里下载aar文件](http://dl.bintray.com/wyouflf/maven/org/xutils/xutils/), 然后用zip解压, 取出jar文件.
-##### 混淆配置参考示例项目sample的配置
 
 
-#### 常见问题:
+### 常见问题:
 1. 更好的管理图片缓存: https://github.com/wyouflf/xUtils3/issues/149
 2. Cookie的使用: https://github.com/wyouflf/xUtils3/issues/125
 3. 关于query参数? http请求可以通过 header, url, body(请求体)传参; query参数是url中问号(?)后面的参数.
 4. 关于body参数? body参数只有PUT, POST, PATCH, DELETE(老版本RFC2616文档没有明确指出它是否支持, 所以暂时支持)请求支持.
 5. 自定义Http参数对象和结果解析: https://github.com/wyouflf/xUtils3/issues/191
+6. 设置了http超时时间为5s但任然等待15s左右: GET请求失败后默认会重试2次, 可以通过setMaxRetryCount(0)来防止请求自动重试.
+7. @Event注解同一个id子类的事件会覆盖父类, onClickListener和onItemClickListener默认屏蔽了双击这种手机上不常用操作, 如需要双击支持可以自己setOnClickListener.
 
 #### 使用前配置
 ##### 需要的权限
@@ -55,9 +70,9 @@ public void onCreate() {
  * 3. 注解参数value支持数组: value={id1, id2, id3}
  * 4. 其它参数说明见{@link org.xutils.event.annotation.Event}类的说明.
  **/
-@Event(value = R.id.btn_test_baidu1,
+@Event(value = R.id.btn_test1,
         type = View.OnClickListener.class/*可选参数, 默认是View.OnClickListener.class*/)
-private void onTestBaidu1Click(View view) {
+private void onTest1Click(View view) {
 ...
 }
 ```
@@ -75,7 +90,7 @@ private void onTestBaidu1Click(View view) {
  *
  * 示例: 查看 org.xutils.sample.http 包里的代码
  */
-BaiduParams params = new BaiduParams();
+JsonDemoParams params = new JsonDemoParams();
 params.wd = "xUtils";
 // 有上传文件时使用multipart表单, 否则上传原始文件流.
 // params.setMultipart(true);
@@ -97,7 +112,7 @@ Callback.Cancelable cancelable
        * 自定义callback的泛型支持方案2, 自定义一类数据的自动转化: 
        * 将注解@HttpResponse加到自定义返回值类型上, 实现自定义ResponseParser接口来统一转换.
        * 如果返回值是json/xml/protobuf等数据格式, 那么利用第三方的json/xml/protobuf等工具将十分容易定义自己的ResponseParser/InputStreamResponseParser.
-       * 如示例代码{@link org.xutils.sample.http.BaiduResponse}, 可直接使用BaiduResponse作为callback的泛型.
+       * 如示例代码{@link org.xutils.sample.http.JsonDemoResponse}, 可直接使用JsonDemoResponse作为callback的泛型.
        *
        * 2. callback的组合:
        * 可以用基类或接口组合个种类的Callback, 见{@link org.xutils.common.Callback}.
@@ -114,10 +129,10 @@ Callback.Cancelable cancelable
        * 5. 其他(线程池, 超时, 重定向, 重试, 代理等): 参考 {@link org.xutils.http.RequestParams}
        *
        **/
-       new Callback.CommonCallback<String>() {
+       new Callback.CommonCallback<JsonDemoResponse>() {
            @Override
-           public void onSuccess(String result) {
-               Toast.makeText(x.app(), result, Toast.LENGTH_LONG).show();
+           public void onSuccess(JsonDemoResponse result) {
+               Toast.makeText(x.app(), result.toString(), Toast.LENGTH_LONG).show();
            }
 
            @Override
@@ -150,8 +165,8 @@ Callback.Cancelable cancelable
 ```
 #### 如果你只需要一个简单的版本:
 ```java
-@Event(value = R.id.btn_test_baidu2)
-private void onTestBaidu2Click(View view) {
+@Event(value = R.id.btn_test2)
+private void onTest2Click(View view) {
     RequestParams params = new RequestParams("https://www.baidu.com/s");
     params.setSslSocketFactory(...); // 设置ssl
     params.addQueryStringParameter("wd", "xUtils");
@@ -180,19 +195,19 @@ private void onTestBaidu2Click(View view) {
 ````
 #### 带有缓存的请求示例:
 ```java
-BaiduParams params = new BaiduParams();
+JsonDemoParams params = new JsonDemoParams();
 params.wd = "xUtils";
 // 默认缓存存活时间, 单位:毫秒.(如果服务没有返回有效的max-age或Expires)
 params.setCacheMaxAge(1000 * 60);
 Callback.Cancelable cancelable
     	// 使用CacheCallback, xUtils将为该请求缓存数据.
-		= x.http().get(params, new Callback.CacheCallback<String>() {
+		= x.http().get(params, new Callback.CacheCallback<JsonDemoResponse>() {
 
 	private boolean hasError = false;
 	private String result = null;
 
 	@Override
-	public boolean onCache(String result) {
+	public boolean onCache(JsonDemoResponse result) {
 		// 得到缓存数据, 缓存过期后不会进入这个方法.
 		// 如果服务端没有返回过期时间, 参考params.setCacheMaxAge(maxAge)方法.
         //
@@ -209,7 +224,7 @@ Callback.Cancelable cancelable
 	}
 
 	@Override
-	public void onSuccess(String result) {
+	public void onSuccess(JsonDemoResponse result) {
 		// 注意: 如果服务返回304 或 onCache 选择了信任缓存, 这时result为null.
         if (result != null) {
 		    this.result = result;
@@ -259,6 +274,9 @@ x.image().bind(imageView, url, imageOptions);
 
 // assets file
 x.image().bind(imageView, "assets://test.gif", imageOptions);
+
+// resources file
+x.image().bind(imageView, "res://" + R.minimap.test, imageOptions);
 
 // local file
 x.image().bind(imageView, new File("/sdcard/test.gif").toURI().toString(), imageOptions);

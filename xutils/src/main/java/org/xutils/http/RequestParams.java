@@ -1,15 +1,17 @@
 package org.xutils.http;
 
+import android.content.Context;
 import android.text.TextUtils;
 
 import org.xutils.common.task.Priority;
-import org.xutils.common.util.LogUtil;
 import org.xutils.http.annotation.HttpRequest;
 import org.xutils.http.app.DefaultParamsBuilder;
 import org.xutils.http.app.HttpRetryHandler;
 import org.xutils.http.app.ParamsBuilder;
 import org.xutils.http.app.RedirectHandler;
 import org.xutils.http.app.RequestTracker;
+import org.xutils.http.request.UriRequest;
+import org.xutils.x;
 
 import java.net.Proxy;
 import java.util.concurrent.Executor;
@@ -23,6 +25,8 @@ import javax.net.ssl.SSLSocketFactory;
  */
 public class RequestParams extends BaseParams {
 
+    public final static int MAX_FILE_LOAD_WORKER = 10;
+
     // 注解及其扩展参数
     private HttpRequest httpRequest;
     private String uri;
@@ -34,6 +38,7 @@ public class RequestParams extends BaseParams {
     private SSLSocketFactory sslSocketFactory;
 
     // 扩展参数
+    private Context context;
     private Proxy proxy; // 代理
     private HostnameVerifier hostnameVerifier; // https域名校验
     private boolean useCookie = true; // 是否在请求过程中启用cookie
@@ -51,8 +56,25 @@ public class RequestParams extends BaseParams {
     private boolean cancelFast = false; // 是否可以被立即停止, true: 为请求创建新的线程, 取消时请求线程被立即中断.
     private int loadingUpdateMaxTimeSpan = 300; // 进度刷新最大间隔时间(ms)
     private HttpRetryHandler httpRetryHandler; // 自定义HttpRetryHandler
-    private RedirectHandler redirectHandler; // 自定义重定向接口, 默认系统自动重定向.
     private RequestTracker requestTracker; // 自定义日志记录接口.
+    private RedirectHandler redirectHandler = new RedirectHandler() { // 重定向接口.
+        @Override
+        public RequestParams getRedirectParams(UriRequest request) throws Throwable {
+            org.xutils.http.request.HttpRequest httpRequest = null;
+            RequestParams params = null;
+            if (request instanceof org.xutils.http.request.HttpRequest) {
+                httpRequest = (org.xutils.http.request.HttpRequest) request;
+                params = httpRequest.getParams();
+                String location = httpRequest.getResponseHeader("Location");
+                if (!TextUtils.isEmpty(location)) {
+                    params.setUri(location);
+                    return params;
+                }
+            }
+
+            return null;
+        }
+    };
 
     /**
      * 使用空构造创建时必须, 必须是带有@HttpRequest注解的子类.
@@ -82,6 +104,7 @@ public class RequestParams extends BaseParams {
         this.signs = signs;
         this.cacheKeys = cacheKeys;
         this.builder = builder;
+        this.context = x.app();
     }
 
     // invoke via HttpTask#createNewRequest
@@ -173,6 +196,14 @@ public class RequestParams extends BaseParams {
         this.useCookie = useCookie;
     }
 
+    public Context getContext() {
+        return context;
+    }
+
+    public void setContext(Context context) {
+        this.context = context;
+    }
+
     public Proxy getProxy() {
         return proxy;
     }
@@ -203,6 +234,11 @@ public class RequestParams extends BaseParams {
         return readTimeout;
     }
 
+    /**
+     * 注意get请求失败后默认会重试2次, 可以通过setMaxRetryCount(0)来防止get请求自动重试.
+     *
+     * @param readTimeout
+     */
     public void setReadTimeout(int readTimeout) {
         if (readTimeout > 0) {
             this.readTimeout = readTimeout;
@@ -407,11 +443,6 @@ public class RequestParams extends BaseParams {
      */
     @Override
     public String toString() {
-        try {
-            this.init();
-        } catch (Throwable ex) {
-            LogUtil.e(ex.getMessage(), ex);
-        }
         String url = this.getUri();
         return TextUtils.isEmpty(url) ?
                 super.toString() :

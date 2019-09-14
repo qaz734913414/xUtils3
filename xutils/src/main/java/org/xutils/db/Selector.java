@@ -74,7 +74,7 @@ public final class Selector<T> {
         return this;
     }
 
-    public Selector or(WhereBuilder where) {
+    public Selector<T> or(WhereBuilder where) {
         this.whereBuilder.or(where);
         return this;
     }
@@ -187,7 +187,7 @@ public final class Selector<T> {
         DbModelSelector dmSelector = this.select("count(\"" + table.getId().getName() + "\") as count");
         DbModel firstModel = dmSelector.findFirst();
         if (firstModel != null) {
-            return firstModel.getLong("count");
+            return firstModel.getLong("count", 0);
         }
         return 0;
     }

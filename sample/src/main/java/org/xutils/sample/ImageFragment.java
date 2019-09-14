@@ -33,11 +33,8 @@ import java.util.regex.Pattern;
 public class ImageFragment extends BaseFragment {
 
     private String[] imgSites = {
-            "http://image.baidu.com/",
-            "http://www.22mm.cc/",
-            "http://www.moko.cc/",
-            "http://eladies.sina.com.cn/photo/",
-            "http://www.youzi4.com/"
+            "http://www.nipic.com/newpic/1.html",
+            "http://www.nipic.com/topic/show_27202_1.html"
     };
 
     ImageOptions imageOptions;
@@ -185,7 +182,9 @@ public class ImageFragment extends BaseFragment {
 
         @Override
         public void onLoading(long total, long current, boolean isDownloading) {
-            this.holder.imgPb.setProgress((int) (current * 100 / total));
+            if (total > 0) {
+                this.holder.imgPb.setProgress((int) (current * 100 / total));
+            }
         }
 
         @Override

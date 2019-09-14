@@ -104,7 +104,7 @@ public class MultipartBody implements ProgressBody {
         out.flush();
 
         if (callBackHandler != null) {
-            callBackHandler.updateProgress(total, total, true);
+            callBackHandler.updateProgress(total, current, true);
         }
     }
 
@@ -187,7 +187,7 @@ public class MultipartBody implements ProgressBody {
         } else {
             try {
                 int len;
-                byte[] buf = new byte[1024];
+                byte[] buf = new byte[4096];
                 while ((len = in.read(buf)) >= 0) {
                     out.write(buf, 0, len);
                     current += len;

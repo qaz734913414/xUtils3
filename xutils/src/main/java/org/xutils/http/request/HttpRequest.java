@@ -58,7 +58,7 @@ public class HttpRequest extends UriRequest {
     private static final CookieManager COOKIE_MANAGER =
             new CookieManager(DbCookieStore.INSTANCE, CookiePolicy.ACCEPT_ALL);
 
-    /*package*/ HttpRequest(RequestParams params, Type loadType) throws Throwable {
+    public HttpRequest(RequestParams params, Type loadType) throws Throwable {
         super(params, loadType);
     }
 
@@ -78,9 +78,9 @@ public class HttpRequest extends UriRequest {
                 String name = kv.key;
                 String value = kv.getValueStr();
                 if (!TextUtils.isEmpty(name) && value != null) {
-                    queryBuilder.append(URLEncoder.encode(name, params.getCharset()).replaceAll("\\+","%20"))
+                    queryBuilder.append(URLEncoder.encode(name, params.getCharset()).replaceAll("\\+", "%20"))
                             .append("=")
-                            .append(URLEncoder.encode(value, params.getCharset()).replaceAll("\\+","%20"))
+                            .append(URLEncoder.encode(value, params.getCharset()).replaceAll("\\+", "%20"))
                             .append("&");
                 }
             }
@@ -207,9 +207,11 @@ public class HttpRequest extends UriRequest {
                     if (!TextUtils.isEmpty(contentType)) {
                         connection.setRequestProperty("Content-Type", contentType);
                     }
+                    boolean isChunkedMode = false;
                     long contentLength = body.getContentLength();
                     if (contentLength < 0) {
                         connection.setChunkedStreamingMode(256 * 1024);
+                        isChunkedMode = true;
                     } else {
                         if (contentLength < Integer.MAX_VALUE) {
                             connection.setFixedLengthStreamingMode((int) contentLength);
@@ -217,9 +219,16 @@ public class HttpRequest extends UriRequest {
                             connection.setFixedLengthStreamingMode(contentLength);
                         } else {
                             connection.setChunkedStreamingMode(256 * 1024);
+                            isChunkedMode = true;
                         }
                     }
-                    connection.setRequestProperty("Content-Length", String.valueOf(contentLength));
+
+                    if (isChunkedMode) {
+                        connection.setRequestProperty("Transfer-Encoding", "chunked");
+                    } else {
+                        connection.setRequestProperty("Content-Length", String.valueOf(contentLength));
+                    }
+
                     connection.setDoOutput(true);
                     body.writeTo(connection.getOutputStream());
                 }
@@ -341,10 +350,11 @@ public class HttpRequest extends UriRequest {
 
     @Override
     public long getContentLength() {
-        long result = 0;
+        long result = -1;
         if (connection != null) {
             try {
-                result = connection.getContentLength();
+                String value = connection.getHeaderField("content-length");
+                result = Long.parseLong(value);
             } catch (Throwable ex) {
                 LogUtil.e(ex.getMessage(), ex);
             }
